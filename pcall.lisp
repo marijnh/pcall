@@ -12,6 +12,6 @@ that exclusive are running."
       (queue-push task (pool-tasks pool))
       task)))
 
-(defmacro pprogn (&body body)
+(defmacro prun (&body body)
   "Shorthand for pcall."
   `(pcall (lambda () ,@body)))

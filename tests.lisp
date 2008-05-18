@@ -57,8 +57,8 @@
 
 (test pcall-sanity
   (in-thread-pool
-    (is (equal '(1 2 3) (join (pprogn (list 1 2 3)))))
-    (let ((task (pprogn (+ 4 2))))
+    (is (equal '(1 2 3) (join (prun (list 1 2 3)))))
+    (let ((task (prun (+ 4 2))))
       (sleep .01)
       (is (= 6 (join task))))))
 
