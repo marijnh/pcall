@@ -30,8 +30,8 @@
            (node (make-node :val elt :prev back :next nil)))
       (setf (queue-back queue) node)
       (cond (back (setf (node-next back) node))
-            (t (setf (queue-front queue) node)))))
-  (condition-notify (queue-condition queue))
+            (t (setf (queue-front queue) node))))
+    (condition-notify (queue-condition queue)))
   (values))
 
 (defun queue-do-pop (queue)
@@ -90,7 +90,8 @@ only notify one of them."
 
 (defun queue-notify (queue)
   "Notify a thread waiting for the queue."
-  (condition-notify (queue-condition queue)))
+  (with-lock-held ((queue-lock queue))
+    (condition-notify (queue-condition queue))))
 
 (defun queue-length (queue)
   "Find the length of a queue."

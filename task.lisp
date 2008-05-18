@@ -92,7 +92,8 @@ task is exclusive, its exclusive is waited on and then taken."
 cleared and anyone who might be waiting for it is notified."
   (let ((excl (task-excl task)))
     (when excl
-      (setf (excl-taken-p excl) nil)
-      (condition-notify (excl-condition excl))
+      (with-lock-held ((excl-lock excl))
+        (setf (excl-taken-p excl) nil)
+        (condition-notify (excl-condition excl)))
       (queue-notify (task-queue task)))
     excl))
