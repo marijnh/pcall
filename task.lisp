@@ -10,15 +10,14 @@
 (defun handle-task (thread-condition task)
   (with-lock-held ((task-lock task))
     (if (task-owner task)
-        (setf task nil)
+        (return-from handle-task)
         (setf (task-owner task) thread-condition)))
-  (when task
-    (handler-case
-        (setf (task-values task) (multiple-value-list (funcall (task-thunk task))))
-      (error (e) (setf (task-error task) e)))
-    (with-lock-held ((task-lock task))
-      (setf (task-owner task) :done)
-      (condition-notify thread-condition))))
+  (handler-case
+      (setf (task-values task) (multiple-value-list (funcall (task-thunk task))))
+    (error (e) (setf (task-error task) e)))
+  (with-lock-held ((task-lock task))
+    (setf (task-owner task) :done)
+    (condition-notify thread-condition)))
 
 (defun join (task)
   (with-lock-held ((task-lock task))

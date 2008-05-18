@@ -20,7 +20,7 @@
                    (and (zerop (queue-length (pool-tasks pool)))
                         (every (lambda (th) (eq (car th) :waiting))
                                (pool-threads pool))))
-        :do (sleep .2))
+        :do (sleep .02))
   (dolist (th (pool-threads pool))
     (destroy-thread (cdr th))))
 
