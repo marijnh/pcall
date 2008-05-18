@@ -16,8 +16,9 @@
     (handler-case
         (setf (task-values task) (multiple-value-list (funcall (task-thunk task))))
       (error (e) (setf (task-error task) e)))
-    (setf (task-owner task) :done)
-    (condition-notify thread-condition)))
+    (with-lock-held ((task-lock task))
+      (setf (task-owner task) :done)
+      (condition-notify thread-condition))))
 
 (defun join (task)
   (with-lock-held ((task-lock task))
