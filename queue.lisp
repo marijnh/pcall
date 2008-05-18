@@ -1,67 +1,97 @@
 (cl:defpackage :pcall-queue
   (:use :cl :bordeaux-threads)
   (:export #:make-queue
-           #:queue-push #:queue-push-back
+           #:queue-push
            #:queue-pop #:queue-wait
+           #:queue-pop-if #:queue-wait-if
            #:queue-length #:queue-empty-p))
 
 (cl:in-package :pcall-queue)
 
-;;; A thread-safe wait queue. Uses front and back lists for amortised
-;;; O(1) popping cost and implementation simplicity.
+;;; A thread-safe wait queue.
 
 (defclass queue ()
   ((lock :initform (make-lock) :reader queue-lock)
    (condition :initform (make-condition-variable) :reader queue-condition)
-   (front :initform () :accessor queue-front)
-   (back :initform () :accessor queue-back)))
+   (front :initform nil :accessor queue-front)
+   (back :initform nil :accessor queue-back)))
+
+(defstruct node val next prev)
 
 (defun make-queue ()
   "Create an empty queue."
   (make-instance 'queue))
 
 (defun queue-push (elt queue)
-  "Push an element to the front of a queue. \(Will be popped last.)"
+  "Push an element onto the back of a queue."
   (with-lock-held ((queue-lock queue))
-    (push elt (queue-front queue)))
-  (condition-notify (queue-condition queue))
-  (values))
-
-(defun queue-push-back (elt queue)
-  "Push an element to the back of a queue. \(Will be popped first.)"
-  (with-lock-held ((queue-lock queue))
-    (push elt (queue-back queue)))
+    (let* ((back (queue-back queue))
+           (node (make-node :val elt :prev back :next nil)))
+      (setf (queue-back queue) node)
+      (cond (back (setf (node-next back) node))
+            (t (setf (queue-front queue) node)))))
   (condition-notify (queue-condition queue))
   (values))
 
 (defun queue-do-pop (queue)
-  (when (null (queue-back queue))
-    (setf (queue-back queue) (nreverse (queue-front queue))
-          (queue-front queue) nil))
-  (if (null (queue-back queue))
-      (values nil nil)
-      (values (pop (queue-back queue)) t)))
+  (let ((node (queue-front queue)))
+    (if node
+        (progn
+          (setf (queue-front queue) (node-next node))
+          (unless (node-next node)
+            (setf (queue-back queue) nil))
+          (values (node-val node) t))
+        (values nil nil))))
 
 (defun queue-pop (queue)
-  "Pop an element from the back of a queue. Returns immediately,
+  "Pop an element from the front of a queue. Returns immediately,
 returning nil if the queue is empty, and a second value indicating
 whether anything was popped."
   (with-lock-held ((queue-lock queue))
     (queue-do-pop queue)))
 
 (defun queue-wait (queue)
-  "Pop an element from the back of a queue. Causes a blocking wait
+  "Pop an element from the front of a queue. Causes a blocking wait
 when no elements are available."
   (with-lock-held ((queue-lock queue))
-    (loop
-       (multiple-value-bind (elt found) (queue-do-pop queue)
-         (when found (return elt)))
-       (condition-wait (queue-condition queue) (queue-lock queue)))))
+    (loop (multiple-value-bind (elt found) (queue-do-pop queue)
+            (when found (return elt)))
+          (condition-wait (queue-condition queue) (queue-lock queue)))))
+
+(defun queue-do-pop-if (pred queue)
+  (loop :for node := (queue-front queue) :then (node-next node)
+        :while node
+        :do (when (funcall pred (node-val node))
+              (if (node-next node)
+                  (setf (node-prev (node-next node)) (node-prev node))
+                  (setf (queue-back queue) (node-prev node)))
+              (if (node-prev node)
+                  (setf (node-next (node-prev node)) (node-next node))
+                  (setf (queue-front queue) (node-next node)))
+              (return (values (node-val node) t)))
+        :finally (return (values nil nil))))
+
+(defun queue-pop-if (pred queue)
+  "Remove the first element in a queue that satisfies a a predicate.
+Return a second value indicating whether anything was found."
+  (with-lock-held ((queue-lock queue))
+    (queue-do-pop-if pred queue)))
+
+(defun queue-wait-if (pred queue)
+  "Remove the first element in a queue that satisfies a a predicate.
+Blocks when no matches are found."
+  (with-lock-held ((queue-lock queue))
+    (loop (multiple-value-bind (elt found) (queue-do-pop-if pred queue)
+            (when found (return elt)))
+          (condition-wait (queue-condition queue) (queue-lock queue)))))
 
 (defun queue-length (queue)
   "Find the length of a queue."
-  (with-lock-held ((queue-lock queue))
-    (+ (length (queue-front queue)) (length (queue-back queue)))))
+  (loop :for node := (queue-front queue) :then (node-next node)
+        :for l :from 0
+        :while node
+        :finally (return l)))
 
 (defun queue-empty-p (queue)
-  (and (null (queue-front queue)) (null (queue-back queue))))
+  "Test whether a queue is empty."
+  (null (queue-front queue)))
