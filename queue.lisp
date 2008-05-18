@@ -4,6 +4,7 @@
            #:queue-push
            #:queue-pop #:queue-wait
            #:queue-pop-if #:queue-wait-if
+           #:queue-notify
            #:queue-length #:queue-empty-p))
 
 (cl:in-package :pcall-queue)
@@ -79,11 +80,17 @@ Return a second value indicating whether anything was found."
 
 (defun queue-wait-if (pred queue)
   "Remove the first element in a queue that satisfies a a predicate.
-Blocks when no matches are found."
+Blocks when no matches are found. Note that having threads blocking on
+a queue using different predicates is dangerous: QUEUE-NOTIFY might
+only notify one of them."
   (with-lock-held ((queue-lock queue))
     (loop (multiple-value-bind (elt found) (queue-do-pop-if pred queue)
             (when found (return elt)))
           (condition-wait (queue-condition queue) (queue-lock queue)))))
+
+(defun queue-notify (queue)
+  "Notify a thread waiting for the queue."
+  (condition-notify (queue-condition queue)))
 
 (defun queue-length (queue)
   "Find the length of a queue."

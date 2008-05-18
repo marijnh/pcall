@@ -29,7 +29,7 @@
         (status (cons :waiting nil)))
     (flet ((run ()
              (loop
-               (let ((task (queue-wait (pool-tasks pool))))
+               (let ((task (queue-wait-if #'claim-task (pool-tasks pool))))
                  (setf (car status) :running)
                  (handle-task thread-condition task)
                  (setf (car status) :waiting)))))

@@ -52,12 +52,13 @@
 
 (defmacro in-thread-pool (&body body)
   `(let ((*thread-pool* (make-thread-pool 5)))
-     (prog1 (progn ,@body) (close-thread-pool *thread-pool*))))
+     (unwind-protect (progn ,@body)
+       (close-thread-pool *thread-pool*))))
 
 (test pcall-sanity
   (in-thread-pool
     (is (equal '(1 2 3) (join (pprogn (list 1 2 3)))))
-    (let ((task (pprogn* *thread-pool* (+ 4 2))))
+    (let ((task (pprogn (+ 4 2))))
       (sleep .01)
       (is (= 6 (join task))))))
 
@@ -70,3 +71,18 @@
             (answer (compute)))
         (sleep .05)
         (is (every (lambda (tsk) (= (join tsk) answer)) tasks))))))
+
+(test pcall-exclusive
+  (in-thread-pool
+    (let* ((a (cons nil (make-exclusive)))
+           (b (cons nil (make-exclusive)))
+           (tasks (loop :for i :from 0 :below 60
+                        :collect
+                        (let ((x (if (zerop (mod i 2)) a b)))
+                          (pcall (lambda ()
+                                   (when (car x) (return :fail))
+                                   (setf (car x) t)
+                                   (sleep .02)
+                                   (setf (car x) nil))
+                                 (cdr x))))))
+      (is (every (lambda (x) (not (eq x :fail))) (mapcar 'join tasks))))))
