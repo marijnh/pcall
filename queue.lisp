@@ -20,14 +20,14 @@
   "Create an empty queue."
   (make-instance 'queue))
 
-(defun queue-push (queue elt)
+(defun queue-push (elt queue)
   "Push an element to the front of a queue. \(Will be popped last.)"
   (with-lock-held ((queue-lock queue))
     (push elt (queue-front queue)))
   (condition-notify (queue-condition queue))
   (values))
 
-(defun queue-push-back (queue elt)
+(defun queue-push-back (elt queue)
   "Push an element to the back of a queue. \(Will be popped first.)"
   (with-lock-held ((queue-lock queue))
     (push elt (queue-back queue)))
