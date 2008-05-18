@@ -3,7 +3,7 @@
   (:export #:make-queue
            #:queue-push #:queue-push-back
            #:queue-pop #:queue-wait
-           #:queue-length))
+           #:queue-length #:queue-empty-p))
 
 (cl:in-package :pcall-queue)
 
@@ -62,3 +62,6 @@ when no elements are available."
   "Find the length of a queue."
   (with-lock-held ((queue-lock queue))
     (+ (length (queue-front queue)) (length (queue-back queue)))))
+
+(defun queue-empty-p (queue)
+  (and (null (queue-front queue)) (null (queue-back queue))))
