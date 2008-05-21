@@ -11,6 +11,16 @@ that exclusive are running."
       (queue-push task (pool-tasks pool))
       task)))
 
-(defmacro prun (&body body)
+(defmacro pexec (&body body)
   "Shorthand for pcall."
   `(pcall (lambda () ,@body)))
+
+(defmacro plet ((&rest bindings) &body body)
+  (let ((syms (mapcar (lambda (x) (gensym (string (car x)))) bindings)))
+    `(let ,(loop :for (var val) :in bindings
+                 :for sym :in syms
+                 :collect `(,sym (pexec ,val)))
+       (symbol-macrolet ,(loop :for (var val) :in bindings
+                               :for sym :in syms
+                               :collect `(,var (join ,sym)))
+         ,@body))))
