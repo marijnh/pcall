@@ -3,8 +3,6 @@
   (:export #:make-queue
            #:queue-push
            #:queue-pop #:queue-wait
-           #:queue-pop-if #:queue-wait-if
-           #:queue-notify
            #:queue-length #:queue-empty-p))
 
 (cl:in-package :pcall-queue)
@@ -59,46 +57,13 @@ when no elements are available."
             (when found (return elt)))
           (condition-wait (queue-condition queue) (queue-lock queue)))))
 
-(defun queue-do-pop-if (pred queue)
-  (loop :for node := (queue-front queue) :then (node-next node)
-        :while node
-        :do (when (funcall pred (node-val node))
-              (if (node-next node)
-                  (setf (node-prev (node-next node)) (node-prev node))
-                  (setf (queue-back queue) (node-prev node)))
-              (if (node-prev node)
-                  (setf (node-next (node-prev node)) (node-next node))
-                  (setf (queue-front queue) (node-next node)))
-              (return (values (node-val node) t)))
-        :finally (return (values nil nil))))
-
-(defun queue-pop-if (pred queue)
-  "Remove the first element in a queue that satisfies a a predicate.
-Return a second value indicating whether anything was found."
-  (with-lock-held ((queue-lock queue))
-    (queue-do-pop-if pred queue)))
-
-(defun queue-wait-if (pred queue)
-  "Remove the first element in a queue that satisfies a a predicate.
-Blocks when no matches are found. Note that having threads blocking on
-a queue using different predicates is dangerous: QUEUE-NOTIFY might
-only notify one of them."
-  (with-lock-held ((queue-lock queue))
-    (loop (multiple-value-bind (elt found) (queue-do-pop-if pred queue)
-            (when found (return elt)))
-          (condition-wait (queue-condition queue) (queue-lock queue)))))
-
-(defun queue-notify (queue)
-  "Notify a thread waiting for the queue."
-  (with-lock-held ((queue-lock queue))
-    (condition-notify (queue-condition queue))))
-
 (defun queue-length (queue)
   "Find the length of a queue."
-  (loop :for node := (queue-front queue) :then (node-next node)
-        :for l :from 0
-        :while node
-        :finally (return l)))
+  (with-lock-held ((queue-lock queue))
+    (loop :for node := (queue-front queue) :then (node-next node)
+          :for l :from 0
+          :while node
+          :finally (return l))))
 
 (defun queue-empty-p (queue)
   "Test whether a queue is empty."

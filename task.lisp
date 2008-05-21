@@ -5,9 +5,7 @@
    (error :initform nil :accessor task-error)
    (values :accessor task-values)
    (lock :initform (make-lock) :reader task-lock)
-   (status :initform :free :accessor task-status)
-   (queue :initarg :queue :reader task-queue)
-   (exclusive :initarg :excl :reader task-excl))
+   (status :initform :free :accessor task-status))
   (:documentation "A task is a piece of code that is scheduled to run
   in the thread pool. The status slot is used to make sure it is not
   run twice, once by a thread and once by the caller of join. The
@@ -30,8 +28,7 @@ should leave it alone."
         (error (e) (setf (task-error task) e)))
       (with-lock-held ((task-lock task))
         (setf (task-status task) :done)
-        (condition-notify thread-condition)))
-    (release-task task)))
+        (condition-notify thread-condition)))))
 
 (defun join (task)
   "Join a task, meaning stop execution of the current thread until the
@@ -46,54 +43,6 @@ current thread executes the task directly."
         (:joined (error "Joining an already joined task."))
         (t (condition-wait (task-status task) (task-lock task))))
       (setf (task-status task) :joined))
-    (cond (mine
-           (wait-for-task task)
-           (unwind-protect (funcall (task-thunk task))
-             (release-task task)))
+    (cond (mine (funcall (task-thunk task)))
           ((task-error task) (error (task-error task)))
           (t (values-list (task-values task))))))
-
-
-;; Mutually exclusive tasks.
-
-(defclass exclusive ()
-  ((lock :initform (make-lock) :reader excl-lock)
-   (condition :initform (make-condition-variable) :reader excl-condition)
-   (taken-p :initform nil :accessor excl-taken-p))
-  (:documentation "Objects of this class represent a 'pseudo-thread'
-  in which tasks are executed. Tasks with the same exclusive never
-  execute at the same time."))
-
-(defun make-exclusive ()
-  "Create an exclusive object."
-  (make-instance 'exclusive))
-
-(defun claim-task (task)
-  "Used as an argument to QUEUE-POP-IF to fetch a task that is either
-not exclusive or whose exclusive is available."
-  (let ((excl (task-excl task)))
-    (or (not excl)
-        (with-lock-held ((excl-lock excl))
-          (and (not (excl-taken-p excl)) 
-               (setf (excl-taken-p excl) t))))))
-
-(defun wait-for-task (task)
-  "Used by join to make sure the current task may be executed. If the
-task is exclusive, its exclusive is waited on and then taken."
-  (let ((excl (task-excl task)))
-    (when excl
-      (with-lock-held ((excl-lock excl))
-        (loop :while (excl-taken-p excl)
-              :do (condition-wait (excl-condition excl) (excl-lock excl)))
-        (setf (excl-taken-p excl) t)))))
-        
-(defun release-task (task)
-  "Releases a task -- when the task is exclusive, it taken flag is
-cleared and anyone who might be waiting for it is notified."
-  (let ((excl (task-excl task)))
-    (when excl
-      (with-lock-held ((excl-lock excl))
-        (setf (excl-taken-p excl) nil)
-        (condition-notify (excl-condition excl)))
-      (queue-notify (task-queue task)))
-    excl))

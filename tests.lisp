@@ -72,17 +72,3 @@
         (sleep .05)
         (is (every (lambda (tsk) (= (join tsk) answer)) tasks))))))
 
-(test pcall-exclusive
-  (in-thread-pool
-    (let* ((a (cons nil (make-exclusive)))
-           (b (cons nil (make-exclusive)))
-           (tasks (loop :for i :from 0 :below 60
-                        :collect
-                        (let ((x (if (zerop (mod i 2)) a b)))
-                          (pcall (lambda ()
-                                   (when (car x) (return :fail))
-                                   (setf (car x) t)
-                                   (sleep .02)
-                                   (setf (car x) nil))
-                                 (cdr x))))))
-      (is (every (lambda (x) (not (eq x :fail))) (mapcar 'join tasks))))))
