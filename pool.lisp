@@ -39,13 +39,16 @@ take a task from the queue \(that is either not synchronised or whose
 exclusive-lock is available), and handles it. The condition variable
 is used when the task is joined while the thread is handling it -- it
 will notify the joining thread when the task is done."
-  (let ((thread-condition (make-condition-variable))
-        (status (cons :waiting nil)))
+  (let ((status (cons :waiting nil)))
     (flet ((run ()
              (loop
-               (let ((task (queue-wait (pool-tasks pool))))
+               (let ((task (queue-wait (pool-tasks pool)))
+                     (mine nil))
                  (setf (car status) :running)
-                 (handle-task thread-condition task)
+                 (with-lock-held ((task-lock task))
+                   (when (eq (task-status task) :free)
+                     (setf mine t (task-status task) :running)))
+                 (when mine (execute-task task))
                  (setf (car status) :waiting)))))
       (setf (cdr status) (make-thread #'run :name name))
       status)))
