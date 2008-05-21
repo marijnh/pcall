@@ -56,14 +56,14 @@
      (unwind-protect (progn ,@body)
        (stop-thread-pool))))
 
-(test pcall-sanity
+(test sanity
   (in-thread-pool
     (is (equal '(1 2 3) (join (pexec (list 1 2 3)))))
     (let ((task (pexec (+ 4 2))))
       (sleep .01)
       (is (= 6 (join task))))))
 
-(test pcall-stress
+(test stress
   (flet ((compute ()
            (loop :for i :from 0 :below 100000
                  :sum (* i i))))
@@ -72,3 +72,17 @@
             (answer (compute)))
         (sleep .05)
         (is (every (lambda (tsk) (= (join tsk) answer)) tasks))))))
+
+(test multi-join
+  (in-thread-pool
+    (let* ((task (pexec (sleep .1) :ok))
+           (joiners (loop :for i :from 0 :below 10
+                          :collect (pexec (join task)))))
+      (sleep .01)
+      (is (every (lambda (tsk) (eq (join tsk) :ok)) joiners)))))
+
+(test delayed-signal
+  (in-thread-pool
+    (let ((task (pexec (error "Wrong!"))))
+      (sleep .01)
+      (signals simple-error (join task)))))
