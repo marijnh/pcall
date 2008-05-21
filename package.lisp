@@ -2,5 +2,4 @@
   (:use :cl :bordeaux-threads :pcall-queue)
   (:export #:pcall #:pexec #:plet #:join
            #:*thread-pool* #:start-thread-pool #:stop-thread-pool
-           #:make-thread-pool #:close-thread-pool
-           #:pool-name))
+           #:make-thread-pool #:close-thread-pool #:pool-name))

@@ -51,9 +51,10 @@
 ;; PCall tests
 
 (defmacro in-thread-pool (&body body)
-  `(let ((*thread-pool* (make-thread-pool 5)))
+  `(progn
+     (start-thread-pool 5)
      (unwind-protect (progn ,@body)
-       (close-thread-pool *thread-pool*))))
+       (stop-thread-pool))))
 
 (test pcall-sanity
   (in-thread-pool
@@ -71,4 +72,3 @@
             (answer (compute)))
         (sleep .05)
         (is (every (lambda (tsk) (= (join tsk) answer)) tasks))))))
-
