@@ -50,14 +50,12 @@
 
 ;; PCall tests
 
-(defmacro in-thread-pool (&body body)
-  `(progn
-     (start-thread-pool 5)
-     (unwind-protect (progn ,@body)
-       (stop-thread-pool))))
+(defmacro with-thread-pool (&body body)
+  `(unwind-protect (progn ,@body)
+     (stop-threads)))
 
 (test sanity
-  (in-thread-pool
+  (with-thread-pool
     (is (equal '(1 2 3) (join (pexec (list 1 2 3)))))
     (let ((task (pexec (+ 4 2))))
       (sleep .01)
@@ -67,22 +65,29 @@
   (flet ((compute ()
            (loop :for i :from 0 :below 100000
                  :sum (* i i))))
-    (in-thread-pool
+    (with-thread-pool
       (let ((tasks (loop :for i :from 0 :below 1000 :collect (pcall #'compute)))
             (answer (compute)))
         (sleep .05)
         (is (every (lambda (tsk) (= (join tsk) answer)) tasks))))))
 
 (test multi-join
-  (in-thread-pool
+  (with-thread-pool
     (let* ((task (pexec (sleep .1) :ok))
            (joiners (loop :for i :from 0 :below 10
                           :collect (pexec (join task)))))
       (sleep .01)
       (is (every (lambda (tsk) (eq (join tsk) :ok)) joiners)))))
 
+(test plet
+  (with-thread-pool
+    (plet ((x (list 1 2))
+           (y (list 3 4)))
+      (sleep .01)
+      (is (equal '(1 2 3 4) (append x y))))))
+
 (test delayed-signal
-  (in-thread-pool
+  (with-thread-pool
     (let ((task (pexec (error "Wrong!"))))
       (sleep .01)
       (signals simple-error (join task)))))

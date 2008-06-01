@@ -1,69 +1,60 @@
 (in-package :pcall)
 
-(defclass thread-pool ()
-  ((open-p :initform t :accessor pool-open-p)
-   (name :initarg :name :reader pool-name)
-   (threads :initform () :accessor pool-threads)
-   (tasks :initform (make-queue) :reader pool-tasks))
-  (:documentation "Objects holding thread pools. Usually, there will
-  be only one of these, in the top-level variable *thread-pool*."))
+(defvar *thread-pool* ())
+(defparameter *thread-pool-size* 3)
+(defvar *thread-pool-lock* (make-lock))
 
-(defun make-thread-pool (n-threads &key (name "thread-pool"))
-  "Create a new thread pool."
-  (let ((pool (make-instance 'thread-pool :name name)))
-    (dotimes (i n-threads)
-      (push (worker-thread pool (format nil "~a-worker-~a" name (1+ i)))
-            (pool-threads pool)))
-    pool))
+(define-condition stop-running () ())
 
-(defun close-thread-pool (pool &key max-wait)
-  "Stop a thread pool from accepting any more tasks, try to wait for
-  the existing tasks to finish running, and kill the treads. max-wait
-  \(in seconds) can be given to raise an error when the tasks take too
-  long to finish."
-  (setf (pool-open-p pool) nil)
-  (unwind-protect
-    (loop :for waited :from 0 :by .2
-          :until (and (zerop (queue-length (pool-tasks pool)))
-                      (every (lambda (th) (eq (car th) :waiting))
-                             (pool-threads pool)))
-          :do (when (and max-wait (>= waited max-wait))
-                (error "Max waiting time exceeded while closing thread pool."))
-          :do (sleep .02))
-    (dolist (th (pool-threads pool))
-      (destroy-thread (cdr th)))))
+(defun audit-thread-pool ()
+  "Make sure the thread pool holds *thread-pool-size* live threads."
+  (with-lock-held (*thread-pool-lock*)
+    (setf *thread-pool* (remove-if-not #'thread-alive-p *thread-pool*))
+    (let ((threads (length *thread-pool*)))
+      (cond ((< threads *thread-pool-size*)
+             (dotimes (i (- *thread-pool-size* threads)) (spawn-thread)))
+            ((> threads *thread-pool-size*)
+             (loop :for i :from 0 :below (- threads *thread-pool-size*)
+                   :for thread :in *thread-pool*
+                   :do (stop-thread thread)))))))
 
-(defun worker-thread (pool name)
+(let ((counter 0))
+  (defun spawn-thread ()
+    (incf counter)
+    (push (make-thread (worker-thread) :name (format nil "pcall-worker-~a" counter))
+          *thread-pool*)))
+
+(defun stop-thread (thread)
+  (interrupt-thread thread (lambda () (signal 'stop-running))))
+
+(defun stop-threads ()
+  (let (old-pool)
+    (with-lock-held (*thread-pool-lock*)
+      (setf old-pool *thread-pool*
+            *thread-pool* nil))
+    (mapc #'stop-thread old-pool)
+    (loop :while (some #'thread-alive-p old-pool)
+          :do (sleep .05))))
+
+(defun thread-pool-size ()
+  *thread-pool-size*)
+
+(defun (setf thread-pool-size) (size)
+  (setf *thread-pool-size* size)
+  (audit-thread-pool))
+
+(defun worker-thread ()
   "The code running inside the pooled threads. Repeatedly tries to
-take a task from the queue \(that is either not synchronised or whose
-exclusive-lock is available), and handles it. The condition variable
-is used when the task is joined while the thread is handling it -- it
-will notify the joining thread when the task is done."
-  (let ((status (cons :waiting nil)))
-    (flet ((run ()
-             (loop
-               (let ((task (queue-wait (pool-tasks pool)))
-                     (mine nil))
-                 (setf (car status) :running)
-                 (with-lock-held ((task-lock task))
-                   (when (eq (task-status task) :free)
-                     (setf mine t (task-status task) :running)))
-                 (when mine (execute-task task))
-                 (setf (car status) :waiting)))))
-      (setf (cdr status) (make-thread #'run :name name))
-      status)))
-
-;; The global thread pool.
-(defvar *thread-pool*)
-
-(defun start-thread-pool (n-threads)
-  "Set the global thread pool to a new pool."
-  (when (boundp '*thread-pool*)
-    (error "A thread pool has already been started."))
-  (setf *thread-pool* (make-thread-pool n-threads))
-  (values))
-
-(defun stop-thread-pool (&key max-wait)
-  "Close the global thread pool."
-  (close-thread-pool *thread-pool* :max-wait max-wait)
-  (makunbound '*thread-pool*))
+take a task from the queue, and handles it."
+  (lambda ()
+    (let ((stop nil))
+      (handler-bind ((stop-running (lambda (c) (declare (ignore c)) (setf stop t))))
+        (loop :until stop
+              :do (let ((task (handler-case (queue-wait *task-queue*)
+                                (stop-running () (setf stop t) nil))))
+                    (when task
+                      (with-lock-held ((task-lock task))
+                        (if (eq (task-status task) :free)
+                            (setf (task-status task) :running)
+                            (setf task nil))))
+                    (when task (execute-task task))))))))
