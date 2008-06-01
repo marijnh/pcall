@@ -38,3 +38,6 @@ current thread executes the task directly."
     (if (task-error task)
         (error (task-error task))
         (values-list (task-values task)))))
+
+(defun done-p (task)
+  (eq (task-status task) :running))
