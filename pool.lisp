@@ -25,13 +25,16 @@
           *thread-pool*)))
 
 (defun stop-thread (thread)
-  (interrupt-thread thread (lambda () (signal 'stop-running))))
+  (when (thread-alive-p thread)
+    (interrupt-thread thread (lambda () (signal 'stop-running)))))
 
-(defun stop-threads ()
+(defun finish-tasks ()
   (let (old-pool)
     (with-lock-held (*thread-pool-lock*)
       (setf old-pool *thread-pool*
             *thread-pool* nil))
+    (loop :until (queue-empty-p *task-queue*)
+          :do (sleep .05))
     (mapc #'stop-thread old-pool)
     (loop :while (some #'thread-alive-p old-pool)
           :do (sleep .05))))

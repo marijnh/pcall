@@ -1,4 +1,4 @@
 (cl:defpackage :pcall
   (:use :cl :bordeaux-threads :pcall-queue)
   (:export #:pcall #:pexec #:plet #:join #:done-p
-           #:thread-pool-size #:stop-threads))
+           #:thread-pool-size #:finish-tasks))

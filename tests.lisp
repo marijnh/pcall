@@ -20,7 +20,7 @@
     (is (eq nil (nth-value 1 (queue-pop q))))))
 
 (defun wait-until-queue-empty (q)
-  (loop :until (zerop (queue-length q)) :do (sleep .01))
+  (loop :until (queue-empty-p q) :do (sleep .01))
   (sleep .05)) ; <- crummy, still a possible race condition
 
 (test queue-wait
@@ -52,7 +52,7 @@
 
 (defmacro with-thread-pool (&body body)
   `(unwind-protect (progn ,@body)
-     (stop-threads)))
+     (finish-tasks)))
 
 (test sanity
   (with-thread-pool
