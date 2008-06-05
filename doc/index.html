@@ -30,10 +30,14 @@
 
     <h2 id="news">News</h2>
 
-    <p class="news"><em>18-05-2008:</em> <a
+    <p class="news"><em>06-06-2008:</em> <a
     href="http://marijn.haverbeke.nl/pcall/pcall-0.1.tgz">Version
     0.1</a>: The first release. Should be considered beta. Any testing
     and <a href="#support">feedback</a> is appreciated.</p>
+
+    <p class="news"><em>05-06-2008:</em> Added a <a
+    href="background.html">background article</a> with some related
+    thoughts.</p>
 
     <h2 id="license">License</h2>
 
@@ -67,15 +71,15 @@
 
     <h2 id="support">Support and mailing lists</h2>
 
-    <p>I hope to have a <a
-    href="http://common-lisp.net">common-lisp.net</a> mailing list for
-    the project soon. For now, feel free to drop me an e-mail
-    directly: <a href="mailto:marijnh@gmail.com">Marijn
+    <p>There is a <a
+    href="http://groups.google.com/group/pcall">Google group</a> for
+    any discussion relating this project. Also feel free to drop me an
+    e-mail directly: <a href="mailto:marijnh@gmail.com">Marijn
     Haverbeke</a>.</p>
 
     <h2 id="quickstart">Quickstart</h2>
 
-    <p>PCall is a rather simple library. There are three basic
+    <p>PCall is a rather simple library. There are only three basic
     concepts that you have to come to grips with:</p>
 
     <ul>
@@ -100,7 +104,7 @@
     </ul>
 
     <p>Imagine that we have this wonderful algorithm for computing
-    (why not) Fibonnaci numbers:</p>
+    (once again) Fibonnaci numbers:</p>
 
     <pre class="code">
 (defun fib (n)
@@ -111,20 +115,20 @@
 (time (fib 40))</pre>
 
     <p>Depending on your machine, this might take some 2 to 10
-    seconds. We don't have that kind of patience, and you can see that
-    this algorithm is entirely optimal. Our only option, it seems, is
-    to use more hardware &#x2015; or make better use of the hardware we
-    have:</p>
+    seconds. We don't have that kind of patience. You can see that
+    this algorithm is entirely optimal, so our only option, it seems,
+    is to use more hardware &#x2015; or make better use of the
+    hardware we have:</p>
 
     <pre class="code">
 (time (let ((f39 (pexec (fib 39)))
             (f38 (pexec (fib 38))))
         (+ (join f39) (join f38))))</pre>
 
-    <p>On my 2-core machine, that speeds things up by about a third &#x2015;
-    which makes sense, since computing fib(39) is about twice as much
-    work as computing fib(38). A nicer way to write the same would
-    be:</p>
+    <p>On my 2-core machine, that speeds things up by about a third
+    &#x2015; which makes sense, since computing fib(39) is about twice
+    as much work as computing fib(38). A nicer way to write the same
+    thing is:</p>
 
     <pre class="code">
 (time (plet ((f39 (fib 39))
@@ -141,7 +145,7 @@
     <p>... but that won't buy you anything. The tasks have to both be
     created before you join the first one, or the second task will not
     exist when the first one runs, and thus won't be able to run
-    concurrently.</p>
+    concurrently with it.</p>
 
     <p>You might be tempted to write something like this:</p>
 
@@ -173,6 +177,25 @@
     <p>Note that joining tasks is not required. When you do not care
     about the result of a computation, you can just spawn the task and
     leave it at that.</p>
+
+    <p>As a final note, PCall can also be used when a program is not
+    CPU-bound, but needs to do some tasks that are hampered by other
+    bottlenecks (network latency, disk speed). If they can be executed
+    in parallel, you can have the thread pool run them. In the
+    following example, the second version runs three times faster on
+    my machine:</p>
+
+    <pre class="code">
+(defvar *urls* '("http://marijn.haverbeke.nl/pcall" "http://common-lisp.net"
+                 "http://eloquentjavascript.net" "http://xkcd.com"))
+
+(time (mapc 'drakma:http-request *urls*))
+(time (mapc 'join (mapcar (lambda (url) (pexec (drakma:http-request url))) *urls*)))</pre>
+
+    <p>In some applications, doing multiple database queries at the
+    same time could really help. You might need to increase the size
+    of the thread pool in such a situation, since some threads will be
+    sitting idle, waiting on a socket.</p>
 
     <h2 id="reference">Reference</h2>
 
