@@ -103,12 +103,11 @@
 
     <pre class="code">
 (defmacro concurrent-update (place var &amp;body body)
-  (let ((prev (gensym)) (func (gensym)))
-    `(let ((,prev ,place)
-           (,func (lambda (,var) ,@body)))
-      (loop :until (eq (sb-ext:compare-and-swap ,place ,prev (funcall ,func ,prev)) ,prev)
-            :do (setf ,prev ,place))
-      ,prev)))
+  `(flet ((action (,var) ,@body))
+     (let ((prev ,place))
+       (loop :until (eq (sb-ext:compare-and-swap ,place prev (action prev)) prev)
+             :do (setf prev ,place))
+       prev)))
 
 (defun make-cstack (&amp;rest elements)
   (cons :stack elements))
@@ -185,8 +184,8 @@
     a computation in a function, putting it into a queue, having some
     thread find it and execute it, and then reading out the results...
     that is obviously more work than just directly executing the
-    computation. Thus, if the computation is small enough, you making
-    your program slower by parallelising it.</p>
+    computation. Thus, if the computation is small enough, you are
+    making your program slower by parallelising it.</p>
 
     <p>The solution suggested by the book is to provide a 'granularity
     knob' &#x2015; some setting that controls the size of the
