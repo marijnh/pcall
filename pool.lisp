@@ -61,3 +61,19 @@ take a task from the queue, and handles it."
                             (setf (task-status task) :running)
                             (setf task nil))))
                     (when task (execute-task task))))))))
+
+(defmacro with-thread-pool ((&key (size *thread-pool-size*) destroy-afterwards) &body body)
+  "Run `body' with a fresh thread-pool. If `destroy-afterwards' is
+false, let all the threads finish, otherwise destroy them. The latter
+is potentially dangerous if the threads acquire any locks, etc."
+  `(let (*thread-pool*
+	 (*thread-pool-size* ,size)
+	 (*thread-pool-lock* (make-lock)))
+     (audit-thread-pool)
+     (unwind-protect 
+	  (progn ,@body)
+       ,(if destroy-afterwards
+	    '(loop :for thread :in *thread-pool*
+		:do (destroy-thread thread))
+	    '(finish-tasks)))))
+
