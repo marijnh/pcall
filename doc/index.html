@@ -275,6 +275,22 @@
     Note that if you call this function while other threads are still
     creating tasks, it might never return.</p>
 
+    <p class="def" id="with-local-thread-pool">
+      <span>macro</span>
+      with-local-thread-pool (&amp;key size on-unwind)
+    </p>
+
+    <p class="desc">Run <code>body</code> with a fresh thread pool. If
+    <code>on-unwind</code> is <code>:wait</code> (the default), the
+    form will wait for all local tasks to finish before returning. If
+    it is <code>:leave</code>, it will return while threads are still
+    working. Given <code>:stop</code> or <code>:destroy</code>, the
+    threads will be stopped at the end of the body. With
+    <code>:stop</code>, they will first finish their current task (if
+    any), with <code>:destroy</code>, they will be brutally destroyed
+    and might leak resources, leave stuff in inconsistent state,
+    etcetera.</p>
+
   </body>
 
 </html>

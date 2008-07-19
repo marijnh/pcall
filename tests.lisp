@@ -91,3 +91,12 @@
     (let ((task (pexec (error "Wrong!"))))
       (sleep .01)
       (signals simple-error (join task)))))
+
+(test local-pool
+  (let ((outer-size (thread-pool-size))
+        (switch :off))
+    (with-local-thread-pool (:size 5 :on-unwind :wait)
+      (is (= 5 (thread-pool-size)))
+      (pexec (sleep .2) (setf switch :on)))
+    (is (eq :on switch))
+    (is (= outer-size (thread-pool-size)))))
