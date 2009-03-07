@@ -100,3 +100,20 @@
       (pexec (sleep .2) (setf switch :on)))
     (is (eq :on switch))
     (is (= outer-size (thread-pool-size)))))
+
+(defvar *x*)
+
+(test enviroment
+  (let ((*x* :a))
+    (set-worker-environment (lambda (f) (let ((*x* :b)) (funcall f))))
+    (plet ((x *x*))
+      (sleep .01)
+      (is (equal '(:a . :b) (cons *x* x))))
+    (set-worker-environment nil)))
+
+(test local-environment
+  (let ((*x* :c))
+    (with-local-thread-pool (:worker-environment (lambda (f) (let ((*x* :d)) (funcall f))))
+      (plet ((x *x*))
+        (sleep .01)
+        (is (equal '(:c . :d) (cons *x* x)))))))

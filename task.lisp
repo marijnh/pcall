@@ -10,8 +10,6 @@
   (:documentation "A task is a piece of code that is scheduled to run
   in the thread pool."))
 
-(defvar *task-queue* (make-queue))
-
 (defun execute-task (task)
   "Execute a task, and store the result or error in the task object.
 When a task's status is not :free, that means the joiner has already

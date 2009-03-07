@@ -5,8 +5,8 @@
 an exclusive is given, the task will only run when no other tasks with
 that exclusive are running."
   (let ((task (make-instance 'task :thunk thunk)))
-    (queue-push task *task-queue*)
-    (unless *thread-pool*
+    (queue-push task (pool-queue *pool*))
+    (unless (pool-threads *pool*)
       (audit-thread-pool))
     task))
 
