@@ -16,10 +16,10 @@ that exclusive are running."
 
 (defmacro plet ((&rest bindings) &body body)
   (let ((syms (mapcar (lambda (x) (gensym (string (car x)))) bindings)))
-    `(let ,(loop :for (var val) :in bindings
+    `(let ,(loop :for (nil val) :in bindings
                  :for sym :in syms
                  :collect `(,sym (pexec ,val)))
-       (symbol-macrolet ,(loop :for (var val) :in bindings
+       (symbol-macrolet ,(loop :for (var nil) :in bindings
                                :for sym :in syms
                                :collect `(,var (join ,sym)))
          ,@body))))
