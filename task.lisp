@@ -34,7 +34,8 @@ current thread executes the task directly."
         (:free (setf mine t (task-status task) :running))
         (:running (let ((wait (make-condition-variable)))
                     (push wait (task-waiting task))
-                    (condition-wait wait (task-lock task))))
+                    (loop until (eq (task-status task) :done) do
+                         (condition-wait wait (task-lock task)))))
         (:done nil)))
     (when mine (execute-task task))
     (if (task-error task)
