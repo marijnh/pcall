@@ -244,12 +244,17 @@
     <p class="desc">Waits for the given task to finish, and then
     returns any values the task produced. When executing the task
     raised an uncaught error, this error will be raised when joining
-    the task. When, at the moment <code>join</code> is called, the
-    task has not been assigned to any thread, the joining thread will
-    execute the task itself. (Note that this makes the dynamic
-    environment in which the task runs unpredictable.) A task may be
-    joined multiple times. Subsequent joins will again return the
-    values, without re-executing the task.</p>
+    the task. (Note that this re-raising might cause problems with
+    condition handlers, which might not be active in the worker
+    threads. If you are using handlers, take extra care, and look at
+    <a
+    href="#set-worker-environment"><code>set-worker-environment</code></a>.)
+    When, at the moment <code>join</code> is called, the task has not
+    been assigned to any thread, the joining thread will execute the
+    task itself. (Note that this makes the dynamic environment in
+    which the task runs unpredictable.) A task may be joined multiple
+    times. Subsequent joins will again return the values, without
+    re-executing the task.</p>
 
     <p class="def" id="join-one">
       <span>function</span>
