@@ -22,7 +22,7 @@
 (let ((counter 0))
   (defun spawn-thread ()
     (incf counter)
-    (push (make-thread (worker-thread) :name (format nil "pcall-worker-~a" counter))
+    (push (make-thread 'worker-thread :name (format nil "pcall-worker-~a" counter))
           *thread-pool*)))
 
 (defun stop-thread (thread at-once-p)
@@ -48,22 +48,21 @@
 (defun worker-thread ()
   "The code running inside the pooled threads. Repeatedly tries to
 take a task from the queue, and handles it."
-  (lambda ()
-    (let ((stop nil))
-      (flet ((stop-running (condition)
-               (unless (eq stop :now)
-                 (setf stop (if (stop-at-once-p condition) :now :when-empty)))))
-        (handler-bind ((stop-running #'stop-running))
-          (loop :until (or (eq stop :now)
-                           (and (eq stop :when-empty) (queue-empty-p *task-queue*)))
-                :do (let ((task (handler-case (queue-wait *task-queue*)
-                                  (stop-running (c) (stop-running c) nil))))
-                      (when task
-                        (with-lock-held ((task-lock task))
-                          (if (eq (task-status task) :free)
-                              (setf (task-status task) :running)
-                              (setf task nil))))
-                      (when task (execute-task task)))))))))
+  (let ((stop nil))
+    (flet ((stop-running (condition)
+             (unless (eq stop :now)
+               (setf stop (if (stop-at-once-p condition) :now :when-empty)))))
+      (handler-bind ((stop-running #'stop-running))
+        (loop :until (or (eq stop :now)
+                         (and (eq stop :when-empty) (queue-empty-p *task-queue*)))
+              :do (let ((task (handler-case (queue-wait *task-queue*)
+                                (stop-running (c) (stop-running c) nil))))
+                    (when task
+                      (with-lock-held ((task-lock task))
+                        (if (eq (task-status task) :free)
+                            (setf (task-status task) :running)
+                            (setf task nil))))
+                    (when task (execute-task task))))))))
 
 (defmacro with-local-thread-pool ((&key (size *thread-pool-size*) (on-unwind :wait)) &body body)
   "Run body with a fresh thread pool. If on-unwind is :wait, it will
