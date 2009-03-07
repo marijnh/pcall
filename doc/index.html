@@ -251,6 +251,17 @@
     joined multiple times. Subsequent joins will again return the
     values, without re-executing the task.</p>
 
+    <p class="def" id="join-one">
+      <span>function</span>
+      join-one (&amp;rest tasks)
+    </p>
+
+    <p class="desc">Blocks until one of the given tasks finishes, and
+    then returns two values, the first being the first value returned
+    by the finished task, the second the task itself. If the first
+    task to finish raises an error, <code>join-one</code> raises this
+    error.</p>
+
     <p class="def" id="done-p">
       <span>function</span>
       done-p (task)
