@@ -268,6 +268,18 @@
     supports <code>setf</code> to change this size. The default value
     is <code>3</code>.</p>
 
+    <p class="def" id="set-worker-environment">
+      <span>function</span>
+      set-worker-environment (wrapper)
+    </p>
+
+    <p class="desc">This can be used to make dynamic variables or
+    bound handlers available in the worker threads.
+    <code>wrapper</code> should be either <code>nil</code>, for no
+    wrapping, or a function that, given a function argument, calls its
+    argument in the new environment. Works best with <a
+    href="#with-local-thread-pool">local</a> thead pools.</p>
+
     <p class="def" id="finish-tasks">
       <span>function</span>
       finish-tasks ()
@@ -284,7 +296,7 @@
 
     <p class="def" id="with-local-thread-pool">
       <span>macro</span>
-      with-local-thread-pool (&amp;key size on-unwind)
+      with-local-thread-pool (&amp;key size on-unwind worker-environment)
     </p>
 
     <p class="desc">Run <code>body</code> with a fresh thread pool. If
@@ -296,7 +308,9 @@
     <code>:stop</code>, they will first finish their current task (if
     any), with <code>:destroy</code>, they will be brutally destroyed
     and might leak resources, leave stuff in inconsistent state,
-    etcetera.</p>
+    etcetera. <code>worker-environment</code> can be used to give the
+    workers in the local pool a specific dynamic <a
+    href="#set-worker-environment">environment</a>.</p>
 
   </body>
 
