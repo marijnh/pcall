@@ -118,22 +118,22 @@
         (sleep .01)
         (is (equal '(:c . :d) (cons *x* x)))))))
 
-(test join-one-random
-  (let ((result (join-one (pexec (sleep (random 0.01)) 1)
-                          (pexec (sleep (random 0.01)) 2)
-                          (pexec (sleep (random 0.01)) 3))))
-    (is (member result '(1 2 3)))))
+(test select-one-random
+  (is (member (join (select-one (pexec (sleep (random 0.2)) 1)
+                                (pexec (sleep (random 0.2)) 2)
+                                (pexec (sleep (random 0.2)) 3))) '(1 2 3))))
 
-(test join-one-always
-  (is (= 2 (join-one (pexec (sleep 0.05) 1) (pexec 2)))))
+(test select-one-always
+  (is (= 2 (join (select-one (pexec (sleep 0.05) 1) (pexec 2))))))
 
-(test join-one-all-tasks-done
-  (flet ((done-task (val)
+(test select-one-all-tasks-done
+  (flet ((make-done-task (val)
            (let ((task (pexec val)))
              (join task)
              task)))
-    (is (= 1 (apply #'join-one (mapcar #'done-task '(1 2 3)))))))
+    (is (= 1 (join (apply #'select-one (mapcar #'make-done-task '(1 2 3))))))))
 
-(test join-one-error
-  (signals simple-error (join-one (pexec (sleep 0.01) 1)
-                                  (pexec (error "Error")))))
+(test select-one-error
+  (signals simple-error (join (select-one (pexec (sleep 0.01) 1)
+                                          (pexec (error "Error"))))))
+

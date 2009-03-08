@@ -47,27 +47,21 @@ current thread executes the task directly."
         (error (task-error task))
         (values-list (task-values task)))))
 
-(defun join-one (&rest tasks)
-  "Returns the result, and the task object, of the first task among
-the arguments to finish computing."
-  (flet ((join-if-done (task)
-           (when (eq (task-status task) :done)
-             (if (task-error task)
-                 (error (task-error task))
-                 (return-from join-one (values (car (task-values task)) task))))))
-    (let ((notifier (make-condition-variable))
-          (our-lock (make-lock)))
-      (with-lock-held (our-lock)
-        (dolist (task tasks) ;; ensure that tasks can't finish unless they have our lock
-          (with-lock-held ((task-lock task))
-            (join-if-done task)
-            (push notifier (task-waiting task))
-            (push our-lock (task-wait-locks task))))
-        (loop
-         (condition-wait notifier our-lock)
+(defun select-one (&rest tasks)
+  "Returns the first task that can be joined without blocking."
+  (let ((notifier (make-condition-variable))
+        (our-lock (make-lock)))
+    (with-lock-held (our-lock)
+      (dolist (task tasks) ;; ensure that tasks can't finish unless they have our lock
+        (with-lock-held ((task-lock task))
+          (when (eq (task-status task) :done)
+            (return-from select-one task))
+          (push notifier (task-waiting task))
+          (push our-lock (task-wait-locks task))))
+      (loop (condition-wait notifier our-lock)
          (dolist (task tasks)
-           (with-lock-held ((task-lock task))
-             (join-if-done task))))))))
+           (when (done-p task)
+             (return-from select-one task)))))))
 
 (defun done-p (task)
   (eq (task-status task) :running))
