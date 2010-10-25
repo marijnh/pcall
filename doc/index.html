@@ -35,7 +35,7 @@
     <h2 id="news">News</h2>
 
     <p class="news"><em>03-09-2009:</em> <a
-    href="http://marijn.haverbeke.nl/pcall/pcall-0.3.tgz">Version
+    href="http://marijnhaverbeke.nl/pcall/pcall-0.3.tgz">Version
     0.3</a>: Release some changes that have been sitting in the
     repository for months now. <a
     href="#select-one"><code>select-one</code></a> and <a
@@ -43,14 +43,14 @@
     added.</p>
 
     <p class="news"><em>26-01-2009:</em> <a
-    href="http://marijn.haverbeke.nl/pcall/pcall-0.2.tgz">Version
+    href="http://marijnhaverbeke.nl/pcall/pcall-0.2.tgz">Version
     0.2</a>: Since there suddenly is some increased attention for the
     library, I'm releasing the current code as 0.2. Still beta-ish,
     but seems to work. This version adds <a
     href="#with-local-thread-pool"><code>with-local-thread-pool</code></a>.</p>
 
     <p class="news"><em>06-06-2008:</em> <a
-    href="http://marijn.haverbeke.nl/pcall/pcall-0.1.tgz">Version
+    href="http://marijnhaverbeke.nl/pcall/pcall-0.1.tgz">Version
     0.1</a>: The first release. Should be considered beta. Any testing
     and <a href="#support">feedback</a> is appreciated.</p>
 
@@ -75,18 +75,16 @@
     for the test suite.</p>
 
     <p>The latest release of PCall can be downloaded from <a
-    href="http://marijn.haverbeke.nl/pcall/pcall.tgz">http://marijn.haverbeke.nl/pcall/pcall.tgz</a>,
+    href="http://marijnhaverbeke.nl/pcall/pcall.tgz">http://marijnhaverbeke.nl/pcall/pcall.tgz</a>,
     or installed with <a
     href="http://www.cliki.net/ASDF-Install">asdf-install</a>.</p>
 
-    <p>A <a href="http://www.darcs.net/">darcs</a> repository with the
+    <p>A <a href="http://www.git-scm.com/">git</a> repository with the
     most recent changes can be checked out with:</p>
 
-    <pre>&gt; darcs get http://marijn.haverbeke.nl/pcall/pcall</pre>
+    <pre>&gt; git clone http://marijnhaverbeke.nl/git/pcall</pre>
 
-    <p>Or you can look at the <a
-    href="http://marijn.haverbeke.nl/darcsweb.cgi?r=pcall">repository</a>
-    through darcsweb.</p>
+    <p>The code is also on <a href="http://github.com/marijnh/pcall">github</a>.</p>
 
     <h2 id="support">Support and mailing lists</h2>
 
@@ -204,7 +202,7 @@
     my machine:</p>
 
     <pre class="code">
-(defvar *urls* '("http://marijn.haverbeke.nl/pcall" "http://common-lisp.net"
+(defvar *urls* '("http://marijnhaverbeke.nl/pcall" "http://common-lisp.net"
                  "http://eloquentjavascript.net" "http://xkcd.com"))
 
 (time (mapc 'drakma:http-request *urls*))
